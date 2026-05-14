@@ -1,0 +1,55 @@
+# QA Agent — smoke test set
+#
+# Copy to `smoke.yml` and customize. Runs in order; stops on first failure.
+# See ../steering/21-mode-smoke.md.
+
+smoke:
+  - name: app-loads
+    description: Home page returns 200 and renders the hero section.
+    url: "/"
+    assert:
+      - element: "role=heading[level=1]"
+        state: visible
+
+  - name: api-health
+    description: /healthz returns 200 with status "ok".
+    url: "/healthz"
+    assert:
+      - http_status: 200
+      - body_contains: '"status":"ok"'
+
+  - name: login
+    description: Known-good user can log in and reach the dashboard.
+    steps:
+      - navigate: "/login"
+      - fill:
+          field: Email
+          value_from: QA_STAGING_USER_EMAIL
+      - fill:
+          field: Password
+          value_from: QA_STAGING_USER_PASSWORD
+      - click: "Sign in"
+      - assert:
+          - url_matches: "/dashboard"
+          - element: '[data-testid="dashboard-greeting"]'
+            state: visible
+
+  - name: primary-navigation
+    description: Each primary nav entry loads without console errors.
+    after: login
+    steps:
+      - for_each_nav_item:
+          assert:
+            - http_status_under: 400
+            - console_errors: 0
+
+  - name: logout
+    description: User can log out and lands on public landing.
+    after: login
+    steps:
+      - click: '[data-testid="user-menu"]'
+      - click: "Sign out"
+      - assert:
+          - url_matches: "/"
+          - element: 'role=link[name="Sign in"]'
+            state: visible

@@ -1,0 +1,33 @@
+# QA Agent — target environments
+#
+# Copy to `targets.yml` and customize. The agent consults this file when the
+# user names an environment (e.g., "run smoke on staging").
+
+environments:
+  local:
+    base_url_env: QA_LOCAL_BASE_URL    # name of env var holding the URL
+    notes: "Local dev server. Reset by `docker compose down -v` between runs."
+    allow_destructive: true
+    require_prod_safe_tag: false
+
+  staging:
+    base_url_env: QA_STAGING_BASE_URL
+    notes: "Shared staging. Other testers may be active — coordinate."
+    allow_destructive: true
+    require_prod_safe_tag: false
+
+  prod:
+    base_url_env: QA_PROD_BASE_URL
+    notes: "Production. Read-only smokes only. Never run @destructive."
+    allow_destructive: false
+    require_prod_safe_tag: true
+
+default_environment: staging
+
+# Optional: per-environment auth profiles (storageState files).
+# If a scenario uses `Given the user is logged in as "<role>"`, the agent
+# looks here first; if not found, falls back to UI login via secrets.
+auth_profiles:
+  staging:
+    user:  .kiro/config/storage-states/staging-user.json
+    admin: .kiro/config/storage-states/staging-admin.json

@@ -1,0 +1,15 @@
+# Secrets — never commit
+.kiro/config/.env
+.kiro/config/storage-states/
+
+# Generated artifacts
+.kiro/reports/
+.kiro/artifacts/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editors
+.vscode/
+.idea/
