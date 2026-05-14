@@ -2,6 +2,15 @@
 
 A modular Kiro steering configuration that turns Kiro into a functional QA agent. The agent reads BDD scenarios from Jira or local `.feature` files, drives a real browser via Playwright MCP, captures evidence, and writes a report (with optional Jira writeback). A human stays in the loop on every important decision.
 
+## Prerequisites
+
+The agent uses two MCP servers via Kiro. If you've already configured them for another project, **you're done — skip this section**. To check, open Kiro's MCP settings.
+
+- A **Jira MCP** server — read issues, search by JQL, post comments.
+- A **Playwright MCP** server — drive the browser.
+
+The steering doesn't hard-code tool names. It verifies the required capability on first use and surfaces a clear error if a server is missing or mis-configured.
+
 ## Quick start
 
 1. **Run the setup script** (idempotent — safe to re-run):
@@ -11,16 +20,13 @@ A modular Kiro steering configuration that turns Kiro into a functional QA agent
    It creates `.kiro/reports/`, `.kiro/artifacts/`, `.kiro/config/storage-states/`, copies the `*.example.*` templates into their real names without clobbering edits, locks down `.env` with `chmod 600`, and verifies `.env` is gitignored.
 2. **Fill in `.kiro/config/.env`** with your Jira token and test-user credentials. Never commit this file (already in `.gitignore`).
 3. **Adjust** `.kiro/config/targets.yml` and `.kiro/config/smoke.yml` to match your app.
-4. **Install MCP servers in Kiro** (one-time):
-   - A Jira MCP server (for issue read + comment write).
-   - A Playwright MCP server (for browser control).
-5. **Open this directory in Kiro.** The steering files in `.kiro/steering/` load automatically.
-6. **Ask the agent to test something**, for example:
+4. **Open this directory in Kiro.** The steering files in `.kiro/steering/` load automatically.
+5. **Ask the agent to test something**, for example:
    - `Run scenarios/login.feature against staging.`
    - `Run smoke on staging.`
    - `Explore the checkout flow for 30 minutes on staging.`
    - `Run QA-123 against staging and post results to Jira when done.`
-7. **Teach it.** Say *"remember the admin panel is at /admin/v2"* or *"remember to skip @flaky scenarios in smoke runs"* and the agent will write it into [`.kiro/steering/99-memory.md`](.kiro/steering/99-memory.md) (always-loaded). Say *"forget X"* to remove it. See [`40-memory-skill.md`](.kiro/steering/40-memory-skill.md) for the full set of triggers and the write workflow.
+6. **Teach it.** Say *"remember the admin panel is at /admin/v2"* or *"remember to skip @flaky scenarios in smoke runs"* and the agent will write it into [`.kiro/steering/99-memory.md`](.kiro/steering/99-memory.md) (always-loaded). Say *"forget X"* to remove it. See [`40-memory-skill.md`](.kiro/steering/40-memory-skill.md) for the full set of triggers and the write workflow.
 
 ## Three testing modes
 

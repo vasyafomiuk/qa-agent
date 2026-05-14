@@ -4,11 +4,11 @@ inclusion: manual
 
 # Playwright Usage
 
-This file documents how the agent drives the browser via the Playwright MCP. If you swap to a different browser MCP (Selenium, Puppeteer), replace this file — the rest of the steering is tool-agnostic.
+This file documents how the agent drives the browser via the Playwright MCP. **Assume a Playwright MCP is already configured in Kiro.** The agent does not install or configure MCPs — that's a Kiro setting. If you swap to a different browser MCP (Selenium, Puppeteer), replace this file — the rest of the steering is tool-agnostic.
 
 ## Expected tool contract
 
-Tool names vary by MCP build. The agent should discover them at session start. The contract:
+Tool names vary by MCP build. On the *first* browser call of a session, identify the actual names available and use them throughout. Do not re-introspect.
 
 | Capability | Typical tool names |
 | --- | --- |
@@ -23,7 +23,7 @@ Tool names vary by MCP build. The agent should discover them at session start. T
 | Evaluate JS | `browser_evaluate`, `playwright_eval` (use sparingly) |
 | Console / network | `browser_console`, `browser_network` |
 
-If a capability is missing, stop and tell the user — do not try to substitute (e.g., do not use `evaluate` to do clicks).
+If a capability is genuinely missing, stop and tell the user — do not substitute (e.g., do not use `evaluate` to do clicks). Suggest enabling the missing capability in the Kiro MCP settings.
 
 ## Selector strategy (in priority order)
 

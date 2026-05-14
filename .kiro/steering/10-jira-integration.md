@@ -4,11 +4,11 @@ inclusion: manual
 
 # Jira Integration
 
-This file documents how the agent reads test scenarios from Jira and (when authorized) writes results back. The agent depends on a Jira MCP server being configured in Kiro. Tool names may vary by server; the agent should discover them at the start of a session and adapt.
+This file documents how the agent reads test scenarios from Jira and (when authorized) writes results back. **Assume a Jira MCP is already configured in Kiro.** The agent does not install or configure MCPs — that's a Kiro setting. Tool names vary by server build; the agent adapts to whichever names the configured server exposes.
 
 ## Expected MCP capability
 
-The agent expects tools that match this contract. Exact names vary — look for them at session start.
+The agent uses tools matching this contract. On the *first* Jira-touching call of a session, identify the actual tool names available and use them throughout. Do not introspect repeatedly.
 
 | Capability | Typical tool name | Required for |
 | --- | --- | --- |
@@ -18,7 +18,7 @@ The agent expects tools that match this contract. Exact names vary — look for 
 | Get attachments | `get_attachments`, `download_attachment` | `.feature` files attached to tickets |
 | Transition status | `transition_issue` | **Human-only** — never invoke autonomously |
 
-At the start of a Jira-touching session, run `list_tools` (or equivalent) and confirm the available subset. If a required capability is missing, **stop and tell the user** — do not improvise.
+If a needed capability is genuinely absent (e.g., the server exposes read but not comment), **stop and tell the user** — do not improvise (e.g., do not try to add a comment via a search tool). Suggest they enable the missing capability in the Kiro MCP settings.
 
 ## Reading scenarios from Jira
 

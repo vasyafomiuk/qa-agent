@@ -103,9 +103,10 @@ ${BOLD}Next steps:${RESET}
        • JIRA_BASE_URL, JIRA_EMAIL, JIRA_API_TOKEN
        • QA_<env>_<role>_EMAIL and QA_<env>_<role>_PASSWORD for your test users
   ${BLUE}2.${RESET} Adjust ${BOLD}.kiro/config/targets.yml${RESET} and ${BOLD}smoke.yml${RESET} to match your app.
-  ${BLUE}3.${RESET} In Kiro, install the MCP servers the agent depends on:
+  ${BLUE}3.${RESET} ${DIM}(If not already configured in Kiro)${RESET} ensure these MCP servers are available:
        • A Jira MCP server (read scenarios + post comments)
        • A Playwright MCP server (drive the browser)
+     The agent verifies capability on first use; no install step needed here.
   ${BLUE}4.${RESET} Open this directory in Kiro and try a session:
        "Run ${BOLD}scenarios/login.feature${RESET} against staging."
        "Run ${BOLD}smoke${RESET} on staging."
