@@ -13,20 +13,32 @@ The steering doesn't hard-code tool names. It verifies the required capability o
 
 ## Quick start
 
-1. **Run the setup script** (idempotent — safe to re-run):
+The setup script installs into **`~/.kiro/`** (user-global). After install, the QA agent's steering is loaded by **every** Kiro project on this machine — you don't need to clone or re-install per project.
+
+1. **Run the setup script** (idempotent — safe to re-run after `git pull`):
    ```sh
-   ./setup.sh
+   ./setup.sh           # install to ~/.kiro/
+   ./setup.sh --dry-run # preview without writing
+   ./setup.sh --force   # overwrite locally-modified steering files
    ```
-   It creates `.kiro/reports/`, `.kiro/artifacts/`, `.kiro/config/storage-states/`, copies the `*.example.*` templates into their real names without clobbering edits, locks down `.env` with `chmod 600`, and verifies `.env` is gitignored.
-2. **Fill in `.kiro/config/.env`** with your Jira token and test-user credentials. Never commit this file (already in `.gitignore`).
-3. **Adjust** `.kiro/config/targets.yml` and `.kiro/config/smoke.yml` to match your app.
-4. **Open this directory in Kiro.** The steering files in `.kiro/steering/` load automatically.
+   Lands the steering at `~/.kiro/steering/`, config templates at `~/.kiro/config/`, example scenarios at `~/.kiro/scenarios/`, and creates `~/.kiro/{reports,artifacts}/`. Never overwrites your edits to `.env`, `targets.yml`, or `smoke.yml`.
+2. **Fill in `~/.kiro/config/.env`** with your Jira token and test-user credentials. The script `chmod 600`'s the file on creation.
+3. **Adjust** `~/.kiro/config/targets.yml` and `~/.kiro/config/smoke.yml` to match your app.
+4. **Open any project in Kiro.** The QA agent steering is loaded automatically — no per-project setup needed.
 5. **Ask the agent to test something**, for example:
-   - `Run scenarios/login.feature against staging.`
    - `Run smoke on staging.`
+   - `Run scenarios/login.feature against staging.`
    - `Explore the checkout flow for 30 minutes on staging.`
    - `Run QA-123 against staging and post results to Jira when done.`
-6. **Teach it.** Say *"remember the admin panel is at /admin/v2"* or *"remember to skip @flaky scenarios in smoke runs"* and the agent will write it into [`.kiro/steering/99-memory.md`](.kiro/steering/99-memory.md) (always-loaded). Say *"forget X"* to remove it. See [`40-memory-skill.md`](.kiro/steering/40-memory-skill.md) for the full set of triggers and the write workflow.
+6. **Teach it.** Say *"remember the admin panel is at /admin/v2"* or *"remember to skip @flaky scenarios in smoke runs"* and the agent will write it into `~/.kiro/steering/99-memory.md` (always-loaded). Say *"forget X"* to remove it. See [`40-memory-skill.md`](.kiro/steering/40-memory-skill.md) for the trigger phrases and write workflow.
+
+### Project-specific overrides
+
+The global steering is the default. If a specific project needs different rules, drop a `.kiro/steering/99-project-overrides.md` in that project's root — Kiro merges it with the global steering, and your overrides win.
+
+### Updating
+
+When this repo gets new commits, `git pull` then `./setup.sh` again. Files that match source are reported as `(current)`; files you've edited locally are reported as `(kept)` unless you pass `--force`.
 
 ## Three testing modes
 
@@ -52,12 +64,14 @@ See [`.kiro/steering/01-principles.md`](.kiro/steering/01-principles.md) for the
 
 ## Directory layout
 
+**This repo is the source.** Run `./setup.sh` to install into `~/.kiro/`.
+
 ```
-qa-agent/
-├── setup.sh              ← run this first
+qa-agent/                     ← this repo (source of truth)
+├── setup.sh                  ← installs to ~/.kiro/
 ├── .kiro/
-│   ├── steering/         ← steering files (the agent's instructions)
-│   │   ├── README.md        ← map + how to customize
+│   ├── steering/             ← steering files (the agent's instructions)
+│   │   ├── README.md
 │   │   ├── 00-overview.md
 │   │   ├── 01-principles.md
 │   │   ├── 02-testing-modes.md
@@ -69,11 +83,26 @@ qa-agent/
 │   │   ├── 20-mode-exploratory.md
 │   │   ├── 21-mode-smoke.md
 │   │   ├── 22-mode-scenarios.md
-│   │   └── 30-bdd-format.md
-│   ├── config/           ← copy *.example.* → real file, then edit
-│   ├── reports/          ← generated test reports (gitignored)
-│   └── artifacts/        ← screenshots, console + network logs (gitignored)
-└── scenarios/            ← local .feature files
+│   │   ├── 30-bdd-format.md
+│   │   ├── 40-memory-skill.md
+│   │   └── 99-memory.md
+│   └── config/               ← *.example.* templates only
+└── scenarios/                ← example .feature files
+```
+
+After running `./setup.sh`:
+
+```
+~/.kiro/                      ← user-global Kiro home (install target)
+├── steering/                 ← all qa-agent steering, loaded everywhere
+├── config/
+│   ├── .env                  ← chmod 600, your secrets (never committed anywhere)
+│   ├── targets.yml           ← your environments
+│   ├── smoke.yml             ← your smoke set
+│   └── *.example.*           ← refreshed from source on each install
+├── scenarios/                ← .feature files
+├── reports/                  ← generated reports
+└── artifacts/                ← screenshots, logs
 ```
 
 ## Customizing
@@ -90,7 +119,8 @@ The full customization guide is in [`.kiro/steering/README.md`](.kiro/steering/R
 
 ## Safety summary
 
-- Secrets are loaded from `.env` (gitignored) or your chosen backend; **never** from chat history. The agent redacts secrets in every output channel.
+- Secrets live in `~/.kiro/config/.env` (chmod 600 by `setup.sh`) or your chosen backend; **never** in chat history. The agent redacts secrets in every output channel.
+- `~/.kiro/` is outside any git repo, so `.env` cannot be accidentally committed by being in a tracked directory. The repo's own `.kiro/config/` only contains `.example.*` templates.
 - Production targets require explicit per-session approval; only scenarios tagged `@prod-safe` are eligible.
 - Jira writeback is opt-in per session and approved comment-by-comment.
 - Destructive scenarios (tagged `@destructive`) require explicit human approval even on staging.

@@ -1,6 +1,12 @@
 #!/usr/bin/env bash
-# setup.sh — bootstrap the QA agent workspace.
-# Idempotent: safe to re-run. Will not overwrite your edited config files.
+# setup.sh — install the QA agent into ~/.kiro (user-global Kiro home).
+#
+# This makes the steering, configs, and example scenarios available to
+# every Kiro project on this machine. The repo itself is the source of
+# truth; re-run this script to refresh ~/.kiro after pulling updates.
+#
+# Idempotent. Will not overwrite edited config files. Will not overwrite
+# steering files that differ from source unless --force.
 
 set -euo pipefail
 
@@ -17,100 +23,186 @@ ok()   { printf "%s✓%s %s\n" "$GREEN"  "$RESET" "$*"; }
 warn() { printf "%s!%s %s\n" "$YELLOW" "$RESET" "$*"; }
 err()  { printf "%s✗%s %s\n" "$RED"    "$RESET" "$*" >&2; }
 step() { printf "\n%s%s%s\n"  "$BOLD"  "$*"     "$RESET"; }
+info() { printf "%s%s%s\n"    "$DIM"   "$*"     "$RESET"; }
 
-# ─── Resolve repo root regardless of invocation path ────────────────────────
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-cd "$ROOT"
+# ─── Flags ──────────────────────────────────────────────────────────────────
+FORCE=false
+DRY_RUN=false
+for arg in "$@"; do
+  case "$arg" in
+    --force)   FORCE=true ;;
+    --dry-run) DRY_RUN=true ;;
+    -h|--help)
+      cat <<'EOF'
+Usage: ./setup.sh [--force] [--dry-run]
 
-step "QA Agent setup"
-printf "%sworking in:%s %s\n" "$DIM" "$RESET" "$ROOT"
+Installs the QA agent into ~/.kiro/ — the user-global Kiro home, loaded
+by every Kiro project on this machine.
 
-# ─── 1/4  Prerequisite check ────────────────────────────────────────────────
-step "1/4  Prerequisite check"
-required=(git)
-optional=(gh)
-for cmd in "${required[@]}"; do
-  if command -v "$cmd" >/dev/null 2>&1; then
-    ok "$cmd ($(command -v "$cmd"))"
-  else
-    err "$cmd not found — required"
-    exit 1
-  fi
-done
-for cmd in "${optional[@]}"; do
-  if command -v "$cmd" >/dev/null 2>&1; then
-    ok "$cmd present"
-  else
-    warn "$cmd not found — optional (used for the GitHub publish flow)"
-  fi
-done
+Layout after install:
+  ~/.kiro/steering/   steering files (loaded automatically by Kiro)
+  ~/.kiro/config/     .env, targets.yml, smoke.yml (+ .example.* templates)
+  ~/.kiro/scenarios/  example .feature files
+  ~/.kiro/reports/    generated test reports
+  ~/.kiro/artifacts/  screenshots, console + network logs
 
-# ─── 2/4  Working directories ───────────────────────────────────────────────
-step "2/4  Creating gitignored working directories"
-for d in .kiro/reports .kiro/artifacts .kiro/config/storage-states; do
-  if [[ -d "$d" ]]; then
-    ok "$d (exists)"
-  else
-    mkdir -p "$d"
-    ok "$d (created)"
-  fi
+Flags:
+  --force    Overwrite existing steering files even if they differ from
+             source. Real configs (.env, edited targets/smoke) are never
+             touched by this flag.
+  --dry-run  Show what would happen without writing.
+EOF
+      exit 0
+      ;;
+    *) err "Unknown flag: $arg (use --help)"; exit 1 ;;
+  esac
 done
 
-# ─── 3/4  Config from templates ─────────────────────────────────────────────
-step "3/4  Copying config templates (will not overwrite)"
-pairs=(
-  ".kiro/config/secrets.example.env|.kiro/config/.env|600"
-  ".kiro/config/targets.example.yml|.kiro/config/targets.yml|644"
-  ".kiro/config/smoke.example.yml|.kiro/config/smoke.yml|644"
-)
-for pair in "${pairs[@]}"; do
-  IFS='|' read -r src dst mode <<<"$pair"
-  if [[ ! -f "$src" ]]; then
-    warn "template missing: $src — skipping"
-    continue
-  fi
-  if [[ -f "$dst" ]]; then
-    ok "$dst (kept — your edits are safe)"
-  else
-    cp "$src" "$dst"
-    chmod "$mode" "$dst" 2>/dev/null || true
-    ok "$dst (created, chmod $mode)"
-  fi
-done
+# ─── Paths ──────────────────────────────────────────────────────────────────
+SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+DEST="${HOME}/.kiro"
 
-# ─── 4/4  Safety: confirm .env is gitignored ────────────────────────────────
-step "4/4  Safety check — .env must be gitignored"
-sentinel=".kiro/config/.env"
-if [[ -f "$sentinel" ]]; then
-  if git -C "$ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-    if git -C "$ROOT" check-ignore -q "$sentinel"; then
-      ok "$sentinel is gitignored"
-    else
-      err "$sentinel is NOT gitignored. STOP — fix .gitignore before adding any secrets."
-      exit 1
-    fi
-  else
-    warn "not a git repo yet — skipped gitignore check"
-  fi
+if [[ ! -d "$SRC/.kiro/steering" ]]; then
+  err "Source not found: $SRC/.kiro/steering. Run from the repo root."
+  exit 1
 fi
 
-# ─── Summary ────────────────────────────────────────────────────────────────
-step "Setup complete."
+step "QA Agent — install to ~/.kiro"
+info "source:      $SRC"
+info "destination: $DEST"
+$DRY_RUN && warn "DRY RUN — no files will be written"
+$FORCE && warn "FORCE — existing steering files will be overwritten"
+
+# ─── 1/4  Destination directories ───────────────────────────────────────────
+step "1/4  Creating $DEST/{steering,config,scenarios,reports,artifacts}"
+for d in steering config config/storage-states scenarios reports artifacts; do
+  if [[ -d "$DEST/$d" ]]; then
+    ok "$d (exists)"
+  elif $DRY_RUN; then
+    info "would create $d"
+  else
+    mkdir -p "$DEST/$d" && ok "$d (created)"
+  fi
+done
+
+# ─── 2/4  Steering files ────────────────────────────────────────────────────
+step "2/4  Installing steering → $DEST/steering/"
+new=0; updated=0; current=0; kept=0
+shopt -s nullglob
+for src_file in "$SRC/.kiro/steering"/*.md; do
+  name="$(basename "$src_file")"
+  dst="$DEST/steering/$name"
+  if [[ ! -f "$dst" ]]; then
+    if $DRY_RUN; then info "would install $name"
+    else cp "$src_file" "$dst" && ok "$name (installed)"
+    fi
+    new=$((new+1))
+  elif cmp -s "$src_file" "$dst"; then
+    ok "$name (current)"
+    current=$((current+1))
+  elif $FORCE; then
+    if $DRY_RUN; then info "would overwrite $name"
+    else cp "$src_file" "$dst" && ok "$name (overwritten)"
+    fi
+    updated=$((updated+1))
+  else
+    warn "$name differs from source — kept local copy. Diff: diff '$src_file' '$dst'"
+    kept=$((kept+1))
+  fi
+done
+info "summary: $new new, $updated updated, $current already current, $kept locally-modified (use --force to overwrite)"
+
+# ─── 3/4  Config templates ──────────────────────────────────────────────────
+step "3/4  Installing config templates → $DEST/config/"
+# Pairs: src_relative_to_repo | dst_absolute | mode | overwrite_policy
+#   policy: skip-if-exists (real configs)
+#   policy: refresh         (example templates — always update unless dry-run)
+pairs=(
+  ".kiro/config/secrets.example.env|$DEST/config/secrets.example.env|644|refresh"
+  ".kiro/config/targets.example.yml|$DEST/config/targets.example.yml|644|refresh"
+  ".kiro/config/smoke.example.yml|$DEST/config/smoke.example.yml|644|refresh"
+  ".kiro/config/secrets.example.env|$DEST/config/.env|600|skip-if-exists"
+  ".kiro/config/targets.example.yml|$DEST/config/targets.yml|644|skip-if-exists"
+  ".kiro/config/smoke.example.yml|$DEST/config/smoke.yml|644|skip-if-exists"
+)
+for pair in "${pairs[@]}"; do
+  IFS='|' read -r src_rel dst mode policy <<<"$pair"
+  src="$SRC/$src_rel"
+  base="${dst##*/}"
+  if [[ ! -f "$src" ]]; then warn "template missing: $src_rel — skipping"; continue; fi
+
+  case "$policy" in
+    skip-if-exists)
+      if [[ -f "$dst" ]]; then
+        ok "$base (kept — your edits are safe)"
+      elif $DRY_RUN; then
+        info "would create $base"
+      else
+        cp "$src" "$dst" && chmod "$mode" "$dst" 2>/dev/null || true
+        ok "$base (created, chmod $mode)"
+      fi
+      ;;
+    refresh)
+      if [[ -f "$dst" ]] && cmp -s "$src" "$dst"; then
+        ok "$base (current)"
+      elif $DRY_RUN; then
+        info "would refresh $base"
+      else
+        cp "$src" "$dst" && chmod "$mode" "$dst" 2>/dev/null || true
+        ok "$base (refreshed)"
+      fi
+      ;;
+  esac
+done
+
+# ─── 4/4  Example scenarios ─────────────────────────────────────────────────
+step "4/4  Installing example scenarios → $DEST/scenarios/"
+for src_file in "$SRC/scenarios"/*.feature; do
+  [[ -f "$src_file" ]] || continue
+  name="$(basename "$src_file")"
+  dst="$DEST/scenarios/$name"
+  if [[ -f "$dst" ]]; then
+    ok "$name (kept)"
+  elif $DRY_RUN; then
+    info "would install $name"
+  else
+    cp "$src_file" "$dst" && ok "$name (installed)"
+  fi
+done
+
+# ─── Safety: chmod .env if it exists ────────────────────────────────────────
+if [[ -f "$DEST/config/.env" ]] && ! $DRY_RUN; then
+  chmod 600 "$DEST/config/.env" 2>/dev/null || true
+fi
+
+# ─── Summary & next steps ───────────────────────────────────────────────────
+step "Done."
 cat <<EOF
 
+${BOLD}Where things landed:${RESET}
+  ${BLUE}Steering${RESET}    $DEST/steering/      (loaded by every Kiro session)
+  ${BLUE}Config${RESET}      $DEST/config/        (.env, targets.yml, smoke.yml)
+  ${BLUE}Scenarios${RESET}   $DEST/scenarios/     (.feature files)
+  ${BLUE}Reports${RESET}     $DEST/reports/       (generated)
+  ${BLUE}Artifacts${RESET}   $DEST/artifacts/     (screenshots, logs)
+
 ${BOLD}Next steps:${RESET}
-  ${BLUE}1.${RESET} Edit ${BOLD}.kiro/config/.env${RESET} and fill in:
+  ${BLUE}1.${RESET} Edit ${BOLD}$DEST/config/.env${RESET} and fill in:
        • JIRA_BASE_URL, JIRA_EMAIL, JIRA_API_TOKEN
        • QA_<env>_<role>_EMAIL and QA_<env>_<role>_PASSWORD for your test users
-  ${BLUE}2.${RESET} Adjust ${BOLD}.kiro/config/targets.yml${RESET} and ${BOLD}smoke.yml${RESET} to match your app.
-  ${BLUE}3.${RESET} ${DIM}(If not already configured in Kiro)${RESET} ensure these MCP servers are available:
-       • A Jira MCP server (read scenarios + post comments)
-       • A Playwright MCP server (drive the browser)
-     The agent verifies capability on first use; no install step needed here.
-  ${BLUE}4.${RESET} Open this directory in Kiro and try a session:
-       "Run ${BOLD}scenarios/login.feature${RESET} against staging."
-       "Run ${BOLD}smoke${RESET} on staging."
-       "Explore the ${BOLD}checkout${RESET} flow for 30 minutes on staging."
+  ${BLUE}2.${RESET} Adjust ${BOLD}$DEST/config/targets.yml${RESET} and ${BOLD}smoke.yml${RESET} to match your app.
+  ${BLUE}3.${RESET} ${DIM}(If not already configured in Kiro)${RESET} ensure a Jira MCP and a Playwright MCP are available.
+  ${BLUE}4.${RESET} Open ${BOLD}any${RESET} project in Kiro — the QA agent steering is now loaded globally.
+       Try:
+         "Run smoke on staging."
+         "Run scenarios/login.feature against staging."
+         "Explore the checkout flow for 30 minutes on staging."
 
-${DIM}Re-run this script anytime — it's idempotent and won't clobber your edits.${RESET}
+${BOLD}Project-specific overrides:${RESET}
+  Drop a ${BOLD}.kiro/steering/99-project-overrides.md${RESET} in any project root to
+  override or extend the global steering for just that project.
+
+${DIM}Re-run this script after pulling updates from the qa-agent repo —
+it's idempotent. Use --force to overwrite locally-modified steering files;
+--dry-run to preview.${RESET}
 EOF
