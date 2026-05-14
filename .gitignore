@@ -2,6 +2,11 @@
 .kiro/config/.env
 .kiro/config/storage-states/
 
+# Local config (copied from .example.* by setup.sh).
+# A team can remove these lines if they want to share customized configs.
+.kiro/config/targets.yml
+.kiro/config/smoke.yml
+
 # Generated artifacts
 .kiro/reports/
 .kiro/artifacts/

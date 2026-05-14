@@ -4,18 +4,18 @@ A modular Kiro steering configuration that turns Kiro into a functional QA agent
 
 ## Quick start
 
-1. **Install MCP servers in Kiro** (one-time):
+1. **Run the setup script** (idempotent — safe to re-run):
+   ```sh
+   ./setup.sh
+   ```
+   It creates `.kiro/reports/`, `.kiro/artifacts/`, `.kiro/config/storage-states/`, copies the `*.example.*` templates into their real names without clobbering edits, locks down `.env` with `chmod 600`, and verifies `.env` is gitignored.
+2. **Fill in `.kiro/config/.env`** with your Jira token and test-user credentials. Never commit this file (already in `.gitignore`).
+3. **Adjust** `.kiro/config/targets.yml` and `.kiro/config/smoke.yml` to match your app.
+4. **Install MCP servers in Kiro** (one-time):
    - A Jira MCP server (for issue read + comment write).
    - A Playwright MCP server (for browser control).
-2. **Copy config templates**:
-   ```sh
-   cp .kiro/config/secrets.example.env  .kiro/config/.env
-   cp .kiro/config/targets.example.yml  .kiro/config/targets.yml
-   cp .kiro/config/smoke.example.yml    .kiro/config/smoke.yml
-   ```
-3. **Fill in `.kiro/config/.env`** with your Jira token and test-user credentials. Never commit this file (already in `.gitignore`).
-4. **Open this directory in Kiro.** The steering files in `.kiro/steering/` load automatically.
-5. **Ask the agent to test something**, for example:
+5. **Open this directory in Kiro.** The steering files in `.kiro/steering/` load automatically.
+6. **Ask the agent to test something**, for example:
    - `Run scenarios/login.feature against staging.`
    - `Run smoke on staging.`
    - `Explore the checkout flow for 30 minutes on staging.`
@@ -47,6 +47,7 @@ See [`.kiro/steering/01-principles.md`](.kiro/steering/01-principles.md) for the
 
 ```
 qa-agent/
+├── setup.sh              ← run this first
 ├── .kiro/
 │   ├── steering/         ← steering files (the agent's instructions)
 │   │   ├── README.md        ← map + how to customize
