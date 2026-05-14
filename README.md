@@ -20,6 +20,7 @@ A modular Kiro steering configuration that turns Kiro into a functional QA agent
    - `Run smoke on staging.`
    - `Explore the checkout flow for 30 minutes on staging.`
    - `Run QA-123 against staging and post results to Jira when done.`
+7. **Teach it.** Say *"remember the admin panel is at /admin/v2"* or *"remember to skip @flaky scenarios in smoke runs"* and the agent will write it into [`.kiro/steering/99-memory.md`](.kiro/steering/99-memory.md) (always-loaded). Say *"forget X"* to remove it. See [`40-memory-skill.md`](.kiro/steering/40-memory-skill.md) for the full set of triggers and the write workflow.
 
 ## Three testing modes
 

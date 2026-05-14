@@ -18,6 +18,8 @@ This directory configures a functional-testing agent that runs in Kiro. It is **
 | `21-mode-smoke.md` | manual | Smoke-pass workflow against critical paths. |
 | `22-mode-scenarios.md` | manual | BDD scenario execution (Jira or local `.feature`). |
 | `30-bdd-format.md` | fileMatch `*.feature` | Gherkin parsing rules and step mapping. |
+| `40-memory-skill.md` | always | How the agent recognizes "remember X" / "forget X" and writes to `99-memory.md`. |
+| `99-memory.md` | always | The agent's persistent memory for this project (preferences, corrections, routes, facts, people). Loads last so memory wins on conflict. |
 
 Files marked **always** load on every session. **Manual** files load when referenced (e.g., when the orchestrator routes to that mode). **fileMatch** files load automatically when the agent opens a matching file.
 
@@ -28,6 +30,7 @@ Files marked **always** load on every session. **Manual** files load when refere
 - **Change secret backend**: edit `12-secrets-management.md`. Default is `.env` + OS env vars; swap for 1Password CLI, AWS Secrets Manager, or Vault.
 - **Add a mode**: drop a `23-mode-<name>.md` file and add it to `02-testing-modes.md`. The mode selector will pick it up.
 - **Project-specific overrides**: create `99-project-overrides.md` (always-inclusion). Anything there wins over earlier files.
+- **Persistent memory**: tell the agent *"remember X"* or *"forget X"* and it updates `99-memory.md`. See `40-memory-skill.md` for the trigger phrases and write workflow.
 
 ## Companion directories
 
