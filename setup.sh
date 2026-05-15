@@ -28,13 +28,15 @@ info() { printf "%s%s%s\n"    "$DIM"   "$*"     "$RESET"; }
 # ─── Flags ──────────────────────────────────────────────────────────────────
 FORCE=false
 DRY_RUN=false
+CLEAN=false
 for arg in "$@"; do
   case "$arg" in
     --force)   FORCE=true ;;
     --dry-run) DRY_RUN=true ;;
+    --clean)   CLEAN=true ;;
     -h|--help)
       cat <<'EOF'
-Usage: ./setup.sh [--force] [--dry-run]
+Usage: ./setup.sh [--force] [--dry-run] [--clean]
 
 Installs the QA agent into ~/.kiro/ — the user-global Kiro home, loaded
 by every Kiro project on this machine.
@@ -50,6 +52,10 @@ Flags:
   --force    Overwrite existing steering files even if they differ from
              source. Real configs (.env, edited targets/smoke) are never
              touched by this flag.
+  --clean    Remove orphan files in ~/.kiro/steering/ that no longer
+             exist in source (use after the repo restructures or renames
+             steering files). Only acts on steering/*.md — configs and
+             scenarios are never auto-deleted.
   --dry-run  Show what would happen without writing.
 EOF
       exit 0
@@ -72,6 +78,7 @@ info "source:      $SRC"
 info "destination: $DEST"
 $DRY_RUN && warn "DRY RUN — no files will be written"
 $FORCE && warn "FORCE — existing steering files will be overwritten"
+$CLEAN && warn "CLEAN — orphan steering files at destination will be removed"
 
 # ─── 1/4  Destination directories ───────────────────────────────────────────
 step "1/4  Creating $DEST/{steering,config,scenarios,reports,artifacts}"
@@ -111,6 +118,22 @@ for src_file in "$SRC/.kiro/steering"/*.md; do
   fi
 done
 info "summary: $new new, $updated updated, $current already current, $kept locally-modified (use --force to overwrite)"
+
+# Optional: remove orphans (files at dest not present in source).
+if $CLEAN; then
+  removed=0
+  for dst_file in "$DEST/steering"/*.md; do
+    [[ -f "$dst_file" ]] || continue
+    name="$(basename "$dst_file")"
+    if [[ ! -f "$SRC/.kiro/steering/$name" ]]; then
+      if $DRY_RUN; then info "would remove orphan: $name"
+      else rm "$dst_file" && ok "removed orphan: $name"
+      fi
+      removed=$((removed+1))
+    fi
+  done
+  info "orphans removed: $removed"
+fi
 
 # ─── 3/4  Config templates ──────────────────────────────────────────────────
 step "3/4  Installing config templates → $DEST/config/"

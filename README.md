@@ -30,7 +30,7 @@ The setup script installs into **`~/.kiro/`** (user-global). After install, the 
    - `Run scenarios/login.feature against staging.`
    - `Explore the checkout flow for 30 minutes on staging.`
    - `Run QA-123 against staging and post results to Jira when done.`
-6. **Teach it.** Say *"remember the admin panel is at /admin/v2"* or *"remember to skip @flaky scenarios in smoke runs"* and the agent will write it into `~/.kiro/steering/99-memory.md` (always-loaded). Say *"forget X"* to remove it. See [`40-memory-skill.md`](.kiro/steering/40-memory-skill.md) for the trigger phrases and write workflow.
+6. **Teach it.** Say *"remember the admin panel is at /admin/v2"* or *"remember to skip @flaky scenarios in smoke runs"* and the agent will append to the **Store** section of `~/.kiro/steering/99-memory.md` (always-loaded). Say *"forget X"* to remove it. See [`99-memory.md`](.kiro/steering/99-memory.md) for triggers, categories, and the write workflow.
 
 ### Project-specific overrides
 
@@ -60,7 +60,7 @@ The agent **always pauses** before:
 - Marking a flaky test as a clean pass.
 - Going off-charter in exploratory mode.
 
-See [`.kiro/steering/01-principles.md`](.kiro/steering/01-principles.md) for the full list.
+See [`.kiro/steering/00-core.md`](.kiro/steering/00-core.md) for the full list.
 
 ## Directory layout
 
@@ -70,22 +70,15 @@ See [`.kiro/steering/01-principles.md`](.kiro/steering/01-principles.md) for the
 qa-agent/                     ← this repo (source of truth)
 ├── setup.sh                  ← installs to ~/.kiro/
 ├── .kiro/
-│   ├── steering/             ← steering files (the agent's instructions)
+│   ├── steering/             ← 7 steering files + index
 │   │   ├── README.md
-│   │   ├── 00-overview.md
-│   │   ├── 01-principles.md
-│   │   ├── 02-testing-modes.md
-│   │   ├── 10-jira-integration.md
-│   │   ├── 11-playwright-usage.md
-│   │   ├── 12-secrets-management.md
-│   │   ├── 13-test-reporting.md
-│   │   ├── 14-best-practices.md
-│   │   ├── 20-mode-exploratory.md
-│   │   ├── 21-mode-smoke.md
-│   │   ├── 22-mode-scenarios.md
-│   │   ├── 30-bdd-format.md
-│   │   ├── 40-memory-skill.md
-│   │   └── 99-memory.md
+│   │   ├── 00-core.md            (always)
+│   │   ├── 10-integrations.md    (manual) — Jira + Playwright
+│   │   ├── 20-modes.md           (manual) — exploratory + smoke + scenarios
+│   │   ├── 30-secrets.md         (manual)
+│   │   ├── 40-reporting.md       (manual) — report + practices
+│   │   ├── 50-bdd.md             (fileMatch *.feature)
+│   │   └── 99-memory.md          (always) — skill + store
 │   └── config/               ← *.example.* templates only
 └── scenarios/                ← example .feature files
 ```
